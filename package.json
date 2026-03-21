@@ -15,17 +15,6 @@
   "files": [
     "src",
     "lib",
-    "android",
-    "ios",
-    "cpp",
-    "*.podspec",
-    "react-native.config.js",
-    "!ios/build",
-    "!android/build",
-    "!android/gradle",
-    "!android/gradlew",
-    "!android/gradlew.bat",
-    "!android/local.properties",
     "!**/__tests__",
     "!**/__fixtures__",
     "!**/__mocks__",
@@ -109,14 +98,6 @@
       ]
     ]
   },
-  "codegenConfig": {
-    "name": "RnRankingListSpec",
-    "type": "modules",
-    "jsSrcsDir": "src",
-    "android": {
-      "javaPackageName": "com.rnrankinglist"
-    }
-  },
   "prettier": {
     "quoteProps": "consistent",
     "singleQuote": true,
@@ -154,16 +135,5 @@
         }
       }
     }
-  },
-  "create-react-native-library": {
-    "type": "turbo-module",
-    "languages": "kotlin-objc",
-    "tools": [
-      "eslint",
-      "jest",
-      "lefthook",
-      "release-it"
-    ],
-    "version": "0.57.2"
   }
 }

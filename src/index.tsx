@@ -1,5 +1,2 @@
-import RnRankingList from './NativeRnRankingList';
-
-export function multiply(a: number, b: number): number {
-  return RnRankingList.multiply(a, b);
-}
+export { RankingList, triggerRankingListAnimation } from './RankingList';
+export type { RankingListProps, RankingListRenderParams } from './RankingList';

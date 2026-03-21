@@ -8,7 +8,8 @@ Simple leaderboard list.
 
 - Display a list of users/items ranked by score or position.
 - Animate the movement of a user/item when their ranking position changes (e.g., when a user moves up or down the leaderboard).
-- Accept both the previous and new ranking positions to drive the animation.
+- Accept previous and new ranking arrays, and derive rank movement from item IDs.
+- Only run ranking animations when explicitly triggered.
 - Be customizable in appearance (row rendering, colors, avatars, etc.).
 - Support smooth, performant animations for ranking changes.
 - Be easy to integrate into any React Native app.
@@ -17,7 +18,7 @@ Simple leaderboard list.
 
 - **Animated Ranking Changes:** When a user’s position changes, the component animates their movement from the old position to the new one.
 - **Customizable Rows:** Consumers can provide a custom row renderer to display user info, scores, avatars, etc.
-- **Flexible Data:** Accepts an array of items with unique IDs and ranking positions.
+- **Flexible Data:** Accepts old/new ranking arrays with unique IDs.
 - **Performance:** Optimized for smooth animations even with large lists.
 
 ### Example Use Cases
@@ -34,12 +35,44 @@ npm install rn-ranking-list
 
 ## Usage
 
-```js
-import { multiply } from 'rn-ranking-list';
+```tsx
+import { RankingList, triggerRankingListAnimation } from 'rn-ranking-list';
 
-// ...
+type User = {
+  id: string;
+  name: string;
+};
 
-const result = multiply(3, 7);
+const oldRanking: User[] = [
+  { id: 'u-1', name: 'Alex' },
+  { id: 'u-2', name: 'Sam' },
+  { id: 'u-3', name: 'Jamie' },
+];
+
+const newRanking: User[] = [
+  { id: 'u-2', name: 'Sam' },
+  { id: 'u-3', name: 'Jamie' },
+  { id: 'u-1', name: 'Alex' },
+];
+
+export function Leaderboard() {
+  function onAnimatePress() {
+    triggerRankingListAnimation();
+  }
+
+  return (
+    <>
+      <RankingList
+        oldRanking={oldRanking}
+        newRanking={newRanking}
+        getId={(item) => item.id}
+      />
+
+      {/* call this after updating the ranking data when you want the animation to run */}
+      <Button title="Animate ranking change" onPress={onAnimatePress} />
+    </>
+  );
+}
 ```
 
 ## Contributing
