@@ -9,7 +9,6 @@ jest.mock('react', () => {
     useEffect: jest.fn(),
     useMemo: jest.fn(),
     useRef: jest.fn(),
-    useState: jest.fn(),
   };
 });
 
@@ -45,13 +44,12 @@ jest.mock('react-native', () => {
 
 import * as React from 'react';
 import { Animated } from 'react-native';
-import { RankingList, triggerRankingListAnimation } from '../RankingList';
+import { RankingList } from '../RankingList';
 
 const mockUseCallback = React.useCallback as jest.Mock;
 const mockUseEffect = React.useEffect as jest.Mock;
 const mockUseMemo = React.useMemo as jest.Mock;
 const mockUseRef = React.useRef as jest.Mock;
-const mockUseState = React.useState as jest.Mock;
 const mockAnimatedTiming = Animated.timing as jest.Mock;
 
 type Player = {
@@ -76,6 +74,12 @@ const oldRanking: Player[] = [
 const newRanking: Player[] = [
   { id: 'u-1', name: 'Alex' },
   { id: 'u-3', name: 'Jamie' },
+  { id: 'u-2', name: 'Sam' },
+];
+
+const updatedRanking: Player[] = [
+  { id: 'u-3', name: 'Jamie' },
+  { id: 'u-1', name: 'Alex' },
   { id: 'u-2', name: 'Sam' },
 ];
 
@@ -114,26 +118,6 @@ function setupHookRuntime() {
 
     return hookSlots[slot];
   });
-  mockUseState.mockImplementation((initialValue) => {
-    const slot = hookIndex;
-    hookIndex += 1;
-
-    if (hookSlots[slot] === undefined) {
-      hookSlots[slot] =
-        typeof initialValue === 'function'
-          ? (initialValue as () => unknown)()
-          : initialValue;
-    }
-
-    const setState = (nextValue: unknown | ((value: unknown) => unknown)) => {
-      hookSlots[slot] =
-        typeof nextValue === 'function'
-          ? (nextValue as (value: unknown) => unknown)(hookSlots[slot])
-          : nextValue;
-    };
-
-    return [hookSlots[slot], setState];
-  });
 }
 
 function renderRankingList(props: RankingListTestProps) {
@@ -158,7 +142,6 @@ describe('RankingList', () => {
     mockUseEffect.mockClear();
     mockUseMemo.mockClear();
     mockUseRef.mockReset();
-    mockUseState.mockReset();
 
     setupHookRuntime();
 
@@ -201,21 +184,33 @@ describe('RankingList', () => {
     expect(mockScrollTo).not.toHaveBeenCalled();
   });
 
-  it('applies an animation request after the updated rankings commit', () => {
+  it('animates when rankings change', () => {
     renderRankingList({
       oldRanking,
-      newRanking: oldRanking,
+      newRanking,
       getId: (item) => item.id,
       rowHeight: 50,
     });
 
-    triggerRankingListAnimation();
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(3);
+    expect(
+      mockAnimatedTiming.mock.calls.map(([, config]) => config.toValue)
+    ).toEqual([0, 50, 100]);
+  });
 
-    expect(mockAnimatedTiming).not.toHaveBeenCalled();
-
+  it('animates when rankings update', () => {
     renderRankingList({
       oldRanking,
       newRanking,
+      getId: (item) => item.id,
+      rowHeight: 50,
+    });
+
+    mockAnimatedTiming.mockReset();
+
+    renderRankingList({
+      oldRanking: newRanking,
+      newRanking: updatedRanking,
       getId: (item) => item.id,
       rowHeight: 50,
     });

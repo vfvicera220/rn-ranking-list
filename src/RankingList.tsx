@@ -31,24 +31,7 @@ export type RankingListProps<TItem> = {
 const DEFAULT_ROW_HEIGHT = 64;
 const DEFAULT_DURATION = 450;
 
-type AnimationListener = () => void;
 type RankedItemEntry<TItem> = RankingListRenderParams<TItem> & { id: string };
-
-const animationListeners = new Set<AnimationListener>();
-
-function subscribeToAnimation(listener: AnimationListener) {
-  animationListeners.add(listener);
-
-  return () => {
-    animationListeners.delete(listener);
-  };
-}
-
-export function triggerRankingListAnimation() {
-  animationListeners.forEach((listener) => {
-    listener();
-  });
-}
 
 export function RankingList<TItem>({
   oldRanking,
@@ -63,7 +46,6 @@ export function RankingList<TItem>({
 }: RankingListProps<TItem>) {
   const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const yByIdRef = useRef<Record<string, Animated.Value>>({});
-  const [animationRequestCount, setAnimationRequestCount] = React.useState(0);
 
   useEffect(() => {
     if (!__DEV__) {
@@ -198,20 +180,9 @@ export function RankingList<TItem>({
   }, [rankedItems, rowHeight]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToAnimation(() => {
-      setAnimationRequestCount((count) => count + 1);
-    });
-
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (animationRequestCount === 0) {
-      return;
-    }
-
     startAnimation();
-  }, [animationRequestCount, startAnimation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rankedItems, rowHeight, duration]);
 
   useEffect(() => {
     if (scrollTargetOffset === null) {

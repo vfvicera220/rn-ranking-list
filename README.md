@@ -9,7 +9,7 @@ Simple leaderboard list.
 - Display a list of users/items ranked by score or position.
 - Animate the movement of a user/item when their ranking position changes (e.g., when a user moves up or down the leaderboard).
 - Accept previous and new ranking arrays, and derive rank movement from item IDs.
-- Only run ranking animations when explicitly triggered.
+- Animate ranking changes automatically whenever the ranking data updates.
 - Be customizable in appearance (row rendering, colors, avatars, etc.).
 - Support smooth, performant animations for ranking changes.
 - Be easy to integrate into any React Native app.
@@ -36,7 +36,7 @@ npm install rn-ranking-list
 ## Usage
 
 ```tsx
-import { RankingList, triggerRankingListAnimation } from 'rn-ranking-list';
+import { RankingList } from 'rn-ranking-list';
 
 type User = {
   id: string;
@@ -56,10 +56,6 @@ const newRanking: User[] = [
 ];
 
 export function Leaderboard() {
-  function onAnimatePress() {
-    triggerRankingListAnimation();
-  }
-
   return (
     <>
       <RankingList
@@ -67,13 +63,12 @@ export function Leaderboard() {
         newRanking={newRanking}
         getId={(item) => item.id}
       />
-
-      {/* call this after updating the ranking data when you want the animation to run */}
-      <Button title="Animate ranking change" onPress={onAnimatePress} />
     </>
   );
 }
 ```
+
+Every time `oldRanking`/`newRanking` updates, the component compares the positions and animates the rows automatically—no extra trigger needed.
 
 ## Contributing
 

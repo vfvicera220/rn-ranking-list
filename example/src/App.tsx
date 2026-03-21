@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { RankingList, triggerRankingListAnimation } from 'rn-ranking-list';
+import { RankingList } from 'rn-ranking-list';
 
 type Player = {
   id: string;
@@ -123,7 +123,6 @@ export default function App() {
         style={styles.button}
         onPress={() => {
           setIsStateB((v) => !v);
-          triggerRankingListAnimation();
         }}
       >
         <Text style={styles.buttonText}>Simulate Rank Update</Text>
