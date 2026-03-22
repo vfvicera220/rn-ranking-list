@@ -1,6 +1,7 @@
 # rn-ranking-list
 
 Simple leaderboard list.
+![demo](https://github.com/user-attachments/assets/a94a9f28-762d-4e95-87ea-4cfdc47eb803)
 
 ## Specification
 
