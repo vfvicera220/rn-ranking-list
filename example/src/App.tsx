@@ -86,12 +86,13 @@ export default function App() {
         oldRanking={oldRanking}
         newRanking={newRanking}
         style={styles.list}
-        rowHeight={68}
+        rowHeight={98}
         getId={(item) => item.id}
-        renderItem={({ item, movement, oldPosition, newPosition }) => (
+        renderItem={({ item, movement, oldPosition, newPosition, index }) => (
           <View style={styles.rowCard}>
             <View>
               <Text style={styles.rowName}>{item.name}</Text>
+              <Text style={styles.rowMeta}>{`Rank: ${index}`}</Text>
               <Text style={styles.rowMeta}>{`Score: ${item.score}`}</Text>
             </View>
             <View style={styles.rankMetaWrap}>

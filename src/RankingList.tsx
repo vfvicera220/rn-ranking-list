@@ -13,6 +13,7 @@ export type RankingListRenderParams<TItem> = {
   item: TItem;
   oldPosition: number;
   newPosition: number;
+  index: number;
   movement: number;
 };
 
@@ -30,6 +31,7 @@ export type RankingListProps<TItem> = {
 
 const DEFAULT_ROW_HEIGHT = 64;
 const DEFAULT_DURATION = 450;
+const SCROLL_CONTEXT_ROWS = 2;
 
 type RankedItemEntry<TItem> = RankingListRenderParams<TItem> & { id: string };
 
@@ -109,6 +111,7 @@ export function RankingList<TItem>({
       acc.push({
         id,
         item,
+        index,
         oldPosition,
         newPosition,
         movement: oldPosition - newPosition,
@@ -130,7 +133,10 @@ export function RankingList<TItem>({
       return null;
     }
 
-    return (targetItem.newPosition - 1) * rowHeight;
+    // show some rows above the target item for better context
+    const targetOffset = (targetItem.newPosition - 1) * rowHeight;
+
+    return Math.max(0, targetOffset - rowHeight * SCROLL_CONTEXT_ROWS);
   }, [rankedItems, rowHeight, scrollToId]);
 
   const startAnimation = React.useCallback(() => {
@@ -209,43 +215,46 @@ export function RankingList<TItem>({
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.container}>
-        {rankedItems.map(({ id, item, oldPosition, newPosition, movement }) => {
-          const y =
-            yByIdRef.current[id] ??
-            new Animated.Value((newPosition - 1) * rowHeight);
+        {rankedItems.map(
+          ({ id, item, oldPosition, newPosition, movement, index }) => {
+            const y =
+              yByIdRef.current[id] ??
+              new Animated.Value((newPosition - 1) * rowHeight);
 
-          yByIdRef.current[id] = y;
+            yByIdRef.current[id] = y;
 
-          return (
-            <Animated.View
-              key={id}
-              style={[
-                styles.row,
-                rowStyle,
-                {
-                  height: rowHeight,
-                  transform: [{ translateY: y }],
-                },
-              ]}
-            >
-              {renderItem ? (
-                renderItem({
-                  item,
-                  oldPosition,
-                  newPosition,
-                  movement,
-                })
-              ) : (
-                <View style={styles.defaultRowContent}>
-                  <Text style={[styles.defaultTitle]}>{id}</Text>
-                  <Text style={styles.defaultMeta}>
-                    {`#${oldPosition} -> #${newPosition}`}
-                  </Text>
-                </View>
-              )}
-            </Animated.View>
-          );
-        })}
+            return (
+              <Animated.View
+                key={id}
+                style={[
+                  styles.row,
+                  rowStyle,
+                  {
+                    height: rowHeight,
+                    transform: [{ translateY: y }],
+                  },
+                ]}
+              >
+                {renderItem ? (
+                  renderItem({
+                    item,
+                    oldPosition,
+                    newPosition,
+                    movement,
+                    index,
+                  })
+                ) : (
+                  <View style={styles.defaultRowContent}>
+                    <Text style={[styles.defaultTitle]}>{id}</Text>
+                    <Text style={styles.defaultMeta}>
+                      {`#${oldPosition} -> #${newPosition}`}
+                    </Text>
+                  </View>
+                )}
+              </Animated.View>
+            );
+          }
+        )}
       </View>
     </ScrollView>
   );
