@@ -56,6 +56,16 @@ const newRanking: User[] = [
 ];
 
 export function Leaderboard() {
+  const [isStateB, setIsStateB] = useState(false);
+
+  const oldRanking = isStateB ? oldRanking : newRanking;
+  const newRanking = isStateB ? newRanking : oldRanking;
+
+  useEffect(() => {
+    // triggers the change
+    setIsStateB(false);
+  }, []);
+
   return (
     <>
       <RankingList
@@ -67,8 +77,6 @@ export function Leaderboard() {
   );
 }
 ```
-
-Every time `oldRanking`/`newRanking` updates, the component compares the positions and animates the rows automatically—no extra trigger needed.
 
 ## Contributing
 
