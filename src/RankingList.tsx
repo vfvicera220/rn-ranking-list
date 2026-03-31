@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   ScrollView,
@@ -30,6 +30,7 @@ export type RankingListProps<TItem> = {
 
 const DEFAULT_ROW_HEIGHT = 64;
 const DEFAULT_DURATION = 450;
+const OVERSCAN_COUNT = 5;
 
 type RankedItemEntry<TItem> = RankingListRenderParams<TItem> & { id: string };
 
@@ -46,6 +47,9 @@ export function RankingList<TItem>({
 }: RankingListProps<TItem>) {
   const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const yByIdRef = useRef<Record<string, Animated.Value>>({});
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     if (!__DEV__) {
@@ -118,6 +122,21 @@ export function RankingList<TItem>({
     }, []);
   }, [getId, newRanking, oldRanking]);
 
+  const visibleItems = useMemo(() => {
+    if (isAnimating || viewportHeight === 0) {
+      return rankedItems;
+    }
+    const firstVisible = Math.max(
+      0,
+      Math.floor(scrollOffset / rowHeight) - OVERSCAN_COUNT
+    );
+    const lastVisible = Math.min(
+      rankedItems.length - 1,
+      Math.ceil((scrollOffset + viewportHeight) / rowHeight) + OVERSCAN_COUNT
+    );
+    return rankedItems.slice(firstVisible, lastVisible + 1);
+  }, [isAnimating, rankedItems, rowHeight, scrollOffset, viewportHeight]);
+
   const maxPosition = rankedItems.length;
   const scrollTargetOffset = useMemo(() => {
     if (!scrollToId) {
@@ -155,7 +174,8 @@ export function RankingList<TItem>({
     });
 
     if (animations.length > 0) {
-      Animated.parallel(animations).start();
+      setIsAnimating(true);
+      Animated.parallel(animations).start(() => setIsAnimating(false));
     }
   }, [duration, rankedItems, rowHeight]);
 
@@ -207,45 +227,50 @@ export function RankingList<TItem>({
       style={[styles.scrollView, style]}
       contentContainerStyle={{ height: maxPosition * rowHeight }}
       showsVerticalScrollIndicator={false}
+      scrollEventThrottle={16}
+      onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
+      onScroll={(e) => setScrollOffset(e.nativeEvent.contentOffset.y)}
     >
       <View style={styles.container}>
-        {rankedItems.map(({ id, item, oldPosition, newPosition, movement }) => {
-          const y =
-            yByIdRef.current[id] ??
-            new Animated.Value((newPosition - 1) * rowHeight);
+        {visibleItems.map(
+          ({ id, item, oldPosition, newPosition, movement }) => {
+            const y =
+              yByIdRef.current[id] ??
+              new Animated.Value((newPosition - 1) * rowHeight);
 
-          yByIdRef.current[id] = y;
+            yByIdRef.current[id] = y;
 
-          return (
-            <Animated.View
-              key={id}
-              style={[
-                styles.row,
-                rowStyle,
-                {
-                  height: rowHeight,
-                  transform: [{ translateY: y }],
-                },
-              ]}
-            >
-              {renderItem ? (
-                renderItem({
-                  item,
-                  oldPosition,
-                  newPosition,
-                  movement,
-                })
-              ) : (
-                <View style={styles.defaultRowContent}>
-                  <Text style={[styles.defaultTitle]}>{id}</Text>
-                  <Text style={styles.defaultMeta}>
-                    {`#${oldPosition} -> #${newPosition}`}
-                  </Text>
-                </View>
-              )}
-            </Animated.View>
-          );
-        })}
+            return (
+              <Animated.View
+                key={id}
+                style={[
+                  styles.row,
+                  rowStyle,
+                  {
+                    height: rowHeight,
+                    transform: [{ translateY: y }],
+                  },
+                ]}
+              >
+                {renderItem ? (
+                  renderItem({
+                    item,
+                    oldPosition,
+                    newPosition,
+                    movement,
+                  })
+                ) : (
+                  <View style={styles.defaultRowContent}>
+                    <Text style={[styles.defaultTitle]}>{id}</Text>
+                    <Text style={styles.defaultMeta}>
+                      {`#${oldPosition} -> #${newPosition}`}
+                    </Text>
+                  </View>
+                )}
+              </Animated.View>
+            );
+          }
+        )}
       </View>
     </ScrollView>
   );

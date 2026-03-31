@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { RankingList } from 'rn-ranking-list';
 
 type Player = {
@@ -7,6 +7,56 @@ type Player = {
   name: string;
   score: number;
 };
+
+// ---------------------------------------------------------------------------
+// Large-list helpers
+// ---------------------------------------------------------------------------
+
+function generatePlayers(count: number): Player[] {
+  const NAMES = [
+    'Alex',
+    'Sam',
+    'Jamie',
+    'Taylor',
+    'Morgan',
+    'Jordan',
+    'Casey',
+    'Riley',
+    'Avery',
+    'Quinn',
+    'Logan',
+    'Cameron',
+    'Drew',
+    'Skyler',
+    'Harper',
+    'Parker',
+    'Rowan',
+    'Phoenix',
+    'Sawyer',
+    'Kendall',
+  ];
+  return Array.from({ length: count }, (_, i) => ({
+    id: `p-${i + 1}`,
+    name: `${NAMES[i % NAMES.length]}${Math.floor(i / NAMES.length) || ''}`,
+    score: Math.max(100, 5000 - i * 9),
+  }));
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
+  }
+  return copy;
+}
+
+const LARGE_LIST_SIZE = 500;
+const basePlayers = generatePlayers(LARGE_LIST_SIZE);
+
+// ---------------------------------------------------------------------------
+// Small-list demo data (original)
+// ---------------------------------------------------------------------------
 
 const newRankings: Player[] = [
   { id: 'u-1', name: 'Alex', score: 1480 },
@@ -68,74 +118,155 @@ const oldRankings: Player[] = [
   { id: 'u-4', name: 'Taylor', score: 1280 },
 ];
 
-export default function App() {
+// ---------------------------------------------------------------------------
+// Shared row card
+// ---------------------------------------------------------------------------
+
+function RankRow({
+  item,
+  movement,
+  oldPosition,
+  newPosition,
+}: {
+  item: Player;
+  movement: number;
+  oldPosition: number;
+  newPosition: number;
+}) {
+  return (
+    <View style={styles.rowCard}>
+      <View>
+        <Text style={styles.rowName}>{item.name}</Text>
+        <Text style={styles.rowMeta}>{`Score: ${item.score}`}</Text>
+      </View>
+      <View style={styles.rankMetaWrap}>
+        <Text
+          style={styles.rankText}
+        >{`#${oldPosition} → #${newPosition}`}</Text>
+        <Text
+          style={[
+            styles.delta,
+            movement > 0 ? styles.up : movement < 0 ? styles.down : styles.same,
+          ]}
+        >
+          {movement > 0 ? `+${movement}` : movement < 0 ? `${movement}` : '–'}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Screen types
+// ---------------------------------------------------------------------------
+
+type Screen = 'home' | 'large-list';
+
+// ---------------------------------------------------------------------------
+// Large list screen
+// ---------------------------------------------------------------------------
+
+function LargeListScreen({ onBack }: { onBack: () => void }) {
+  const [rankingA] = useState(() => basePlayers);
+  const [rankingB] = useState(() => shuffleArray(basePlayers));
+  const [isStateB, setIsStateB] = useState(false);
+
+  const oldRanking = isStateB ? rankingA : rankingB;
+  const newRanking = isStateB ? rankingB : rankingA;
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Pressable onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </Pressable>
+        <Text style={styles.title}>Large List ({LARGE_LIST_SIZE} items)</Text>
+        <Text style={styles.subtitle}>
+          Virtualization keeps only visible rows mounted at any time.
+        </Text>
+
+        <RankingList
+          oldRanking={oldRanking}
+          newRanking={newRanking}
+          style={styles.list}
+          rowHeight={64}
+          getId={(item) => item.id}
+          renderItem={(params) => <RankRow {...params} />}
+        />
+
+        <Pressable style={styles.button} onPress={() => setIsStateB((v) => !v)}>
+          <Text style={styles.buttonText}>Shuffle Rankings</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Home screen
+// ---------------------------------------------------------------------------
+
+function HomeScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
   const [isStateB, setIsStateB] = useState(false);
 
   const oldRanking = isStateB ? oldRankings : newRankings;
   const newRanking = isStateB ? newRankings : oldRankings;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Live Ranking Prototype</Text>
-      <Text style={styles.subtitle}>
-        Tap the button to animate players between old and new positions.
-      </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Live Ranking Prototype</Text>
+        <Text style={styles.subtitle}>
+          Tap the button to animate players between old and new positions.
+        </Text>
 
-      <RankingList
-        scrollToId="u-4"
-        oldRanking={oldRanking}
-        newRanking={newRanking}
-        style={styles.list}
-        rowHeight={68}
-        getId={(item) => item.id}
-        renderItem={({ item, movement, oldPosition, newPosition }) => (
-          <View style={styles.rowCard}>
-            <View>
-              <Text style={styles.rowName}>{item.name}</Text>
-              <Text style={styles.rowMeta}>{`Score: ${item.score}`}</Text>
-            </View>
-            <View style={styles.rankMetaWrap}>
-              <Text
-                style={styles.rankText}
-              >{`#${oldPosition} -> #${newPosition}`}</Text>
-              <Text
-                style={[
-                  styles.delta,
-                  movement > 0
-                    ? styles.up
-                    : movement < 0
-                    ? styles.down
-                    : styles.same,
-                ]}
-              >
-                {movement > 0
-                  ? `+${movement}`
-                  : movement < 0
-                  ? `${movement}`
-                  : '0'}
-              </Text>
-            </View>
-          </View>
-        )}
-      />
+        <RankingList
+          scrollToId="u-4"
+          oldRanking={oldRanking}
+          newRanking={newRanking}
+          style={styles.list}
+          rowHeight={68}
+          getId={(item) => item.id}
+          renderItem={(params) => <RankRow {...params} />}
+        />
 
-      <Pressable
-        style={styles.button}
-        onPress={() => {
-          setIsStateB((v) => !v);
-        }}
-      >
-        <Text style={styles.buttonText}>Simulate Rank Update</Text>
-      </Pressable>
-    </View>
+        <Pressable style={styles.button} onPress={() => setIsStateB((v) => !v)}>
+          <Text style={styles.buttonText}>Simulate Rank Update</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.button, styles.buttonSecondary]}
+          onPress={() => onNavigate('large-list')}
+        >
+          <Text style={styles.buttonText}>Large List Demo →</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Root
+// ---------------------------------------------------------------------------
+
+export default function App() {
+  const [screen, setScreen] = useState<Screen>('home');
+
+  if (screen === 'large-list') {
+    return <LargeListScreen onBack={() => setScreen('home')} />;
+  }
+
+  return <HomeScreen onNavigate={setScreen} />;
+}
+
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: 72,
+  },
+  container: {
+    flex: 1,
+    paddingTop: 16,
     paddingHorizontal: 16,
     paddingBottom: 24,
   },
@@ -197,14 +328,26 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   button: {
-    marginTop: 16,
+    marginTop: 12,
     borderRadius: 10,
     backgroundColor: '#0F172A',
     alignItems: 'center',
     paddingVertical: 12,
   },
+  buttonSecondary: {
+    backgroundColor: '#1D4ED8',
+  },
   buttonText: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  backButton: {
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  backButtonText: {
+    fontSize: 15,
+    color: '#1D4ED8',
+    fontWeight: '600',
   },
 });

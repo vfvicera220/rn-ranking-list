@@ -9,6 +9,7 @@ jest.mock('react', () => {
     useEffect: jest.fn(),
     useMemo: jest.fn(),
     useRef: jest.fn(),
+    useState: jest.fn(),
   };
 });
 
@@ -50,6 +51,7 @@ const mockUseCallback = React.useCallback as jest.Mock;
 const mockUseEffect = React.useEffect as jest.Mock;
 const mockUseMemo = React.useMemo as jest.Mock;
 const mockUseRef = React.useRef as jest.Mock;
+const mockUseState = React.useState as jest.Mock;
 const mockAnimatedTiming = Animated.timing as jest.Mock;
 
 type Player = {
@@ -85,12 +87,16 @@ const updatedRanking: Player[] = [
 
 let hookIndex = 0;
 let hookSlots: unknown[] = [];
+let stateIndex = 0;
+let stateSlots: unknown[] = [];
 let cleanups: Array<() => void> = [];
 let scrollViewCurrent: { scrollTo: typeof mockScrollTo } | null = null;
 
 function setupHookRuntime() {
   hookIndex = 0;
   hookSlots = [];
+  stateIndex = 0;
+  stateSlots = [];
   cleanups = [];
   scrollViewCurrent = { scrollTo: mockScrollTo };
 
@@ -118,10 +124,25 @@ function setupHookRuntime() {
 
     return hookSlots[slot];
   });
+  mockUseState.mockImplementation((initialValue: unknown) => {
+    const slot = stateIndex;
+    stateIndex += 1;
+
+    if (stateSlots[slot] === undefined) {
+      stateSlots[slot] = initialValue;
+    }
+
+    const setState = (nextValue: unknown) => {
+      stateSlots[slot] = nextValue;
+    };
+
+    return [stateSlots[slot], setState];
+  });
 }
 
 function renderRankingList(props: RankingListTestProps) {
   hookIndex = 0;
+  stateIndex = 0;
   RankingList(props);
 }
 
@@ -142,6 +163,7 @@ describe('RankingList', () => {
     mockUseEffect.mockClear();
     mockUseMemo.mockClear();
     mockUseRef.mockReset();
+    mockUseState.mockReset();
 
     setupHookRuntime();
 
