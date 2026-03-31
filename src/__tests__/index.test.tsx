@@ -46,6 +46,7 @@ jest.mock('react-native', () => {
 import * as React from 'react';
 import { Animated } from 'react-native';
 import { RankingList } from '../RankingList';
+import type { RankingListRenderParams } from '../index';
 
 const mockUseCallback = React.useCallback as jest.Mock;
 const mockUseEffect = React.useEffect as jest.Mock;
@@ -65,6 +66,7 @@ type RankingListTestProps = {
   getId: (item: Player) => string;
   scrollToId?: string;
   rowHeight?: number;
+  renderItem?: (params: RankingListRenderParams<Player>) => React.ReactNode;
 };
 
 const oldRanking: Player[] = [
@@ -83,6 +85,14 @@ const updatedRanking: Player[] = [
   { id: 'u-3', name: 'Jamie' },
   { id: 'u-1', name: 'Alex' },
   { id: 'u-2', name: 'Sam' },
+];
+
+const longRanking: Player[] = [
+  { id: 'u-1', name: 'Alex' },
+  { id: 'u-2', name: 'Sam' },
+  { id: 'u-3', name: 'Jamie' },
+  { id: 'u-4', name: 'Morgan' },
+  { id: 'u-5', name: 'Priya' },
 ];
 
 let hookIndex = 0;
@@ -189,7 +199,7 @@ describe('RankingList', () => {
     });
 
     expect(mockScrollTo).toHaveBeenCalledWith({
-      y: 100,
+      y: 0,
       animated: false,
     });
   });
@@ -241,5 +251,40 @@ describe('RankingList', () => {
     expect(
       mockAnimatedTiming.mock.calls.map(([, config]) => config.toValue)
     ).toEqual([0, 50, 100]);
+  });
+
+  it('passes the correct index to renderItem', () => {
+    const renderItem = jest.fn<
+      React.ReactNode,
+      [RankingListRenderParams<Player>]
+    >(() => null);
+
+    renderRankingList({
+      oldRanking,
+      newRanking,
+      getId: (item) => item.id,
+      rowHeight: 50,
+      renderItem,
+    });
+
+    expect(renderItem).toHaveBeenCalledTimes(newRanking.length);
+    expect(renderItem.mock.calls.map(([params]) => params.index)).toEqual([
+      0, 1, 2,
+    ]);
+  });
+
+  it('scrolls to the computed offset for distant targets', () => {
+    renderRankingList({
+      oldRanking: longRanking,
+      newRanking: longRanking,
+      getId: (item) => item.id,
+      rowHeight: 50,
+      scrollToId: 'u-5',
+    });
+
+    expect(mockScrollTo).toHaveBeenCalledWith({
+      y: 100,
+      animated: false,
+    });
   });
 });
