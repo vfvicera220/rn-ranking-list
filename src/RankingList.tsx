@@ -29,6 +29,7 @@ export type RankingListProps<TItem> = {
   rowStyle?: StyleProp<ViewStyle>;
   scrollEventThrottle?: number;
   renderItem?: (params: RankingListRenderParams<TItem>) => React.ReactNode;
+  onScrollToComplete?: () => void;
 };
 
 const DEFAULT_ROW_HEIGHT = 64;
@@ -49,6 +50,7 @@ export function RankingList<TItem>({
   rowStyle,
   scrollEventThrottle = Platform.OS === 'ios' ? 100 : 16,
   renderItem,
+  onScrollToComplete,
 }: RankingListProps<TItem>) {
   const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const yByIdRef = useRef<Record<string, Animated.Value>>({});
@@ -242,12 +244,13 @@ export function RankingList<TItem>({
         y: scrollTargetOffset,
         animated: false,
       });
+      onScrollToComplete?.();
     });
 
     return () => {
       cancelAnimationFrame(frameId);
     };
-  }, [scrollTargetOffset]);
+  }, [scrollTargetOffset, onScrollToComplete]);
 
   return (
     <ScrollView
