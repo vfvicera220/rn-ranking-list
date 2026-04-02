@@ -33,6 +33,7 @@ jest.mock('react-native', () => {
       parallel: jest.fn(() => ({ start: jest.fn() })),
       timing: jest.fn(() => ({ start: jest.fn() })),
     },
+    Platform: { OS: 'android' },
     ScrollView: 'ScrollView',
     StyleSheet: {
       create: <T,>(styles: T) => styles,

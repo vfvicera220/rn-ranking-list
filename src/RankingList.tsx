@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -126,9 +127,28 @@ export function RankingList<TItem>({
   }, [getId, newRanking, oldRanking]);
 
   const visibleItems = useMemo(() => {
+    if (isAnimating && Platform.OS === 'ios') {
+      // On iOS keep virtualization active during animation by including any row
+      // whose old OR new position overlaps the expanded viewport, so rows
+      // animating through the viewport are never culled mid-flight.
+      const viewportFirst =
+        Math.floor(scrollOffset / rowHeight) - OVERSCAN_COUNT;
+      const viewportLast =
+        Math.ceil((scrollOffset + viewportHeight) / rowHeight) + OVERSCAN_COUNT;
+      return rankedItems.filter(({ oldPosition, newPosition }) => {
+        const oldIdx = oldPosition - 1;
+        const newIdx = newPosition - 1;
+        return (
+          (oldIdx >= viewportFirst && oldIdx <= viewportLast) ||
+          (newIdx >= viewportFirst && newIdx <= viewportLast)
+        );
+      });
+    }
+
     if (isAnimating) {
       return rankedItems;
     }
+
     const firstVisible = Math.max(
       0,
       Math.floor(scrollOffset / rowHeight) - OVERSCAN_COUNT
