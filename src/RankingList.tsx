@@ -130,6 +130,20 @@ export function RankingList<TItem>({
     }, []);
   }, [getId, newRanking, oldRanking]);
 
+  // Initialise an Animated.Value for every id that does not yet have one so
+  // that the JSX render never creates values or mutates refs during rendering,
+  // which would trigger the React "useInsertionEffect must not schedule
+  // updates" warning on Fabric / React 18+.
+  useMemo(() => {
+    rankedItems.forEach(({ id, newPosition }) => {
+      if (!yByIdRef.current[id]) {
+        yByIdRef.current[id] = new Animated.Value(
+          (newPosition - 1) * rowHeight
+        );
+      }
+    });
+  }, [rankedItems, rowHeight]);
+
   const visibleItems = useMemo(() => {
     if (isAnimating && Platform.OS === 'ios') {
       // On iOS keep virtualization active during animation by including any row
@@ -265,11 +279,7 @@ export function RankingList<TItem>({
       <View style={styles.container}>
         {visibleItems.map(
           ({ id, item, oldPosition, newPosition, movement, index }) => {
-            const y =
-              yByIdRef.current[id] ??
-              new Animated.Value((newPosition - 1) * rowHeight);
-
-            yByIdRef.current[id] = y;
+            const y = yByIdRef.current[id]!;
 
             return (
               <Animated.View
