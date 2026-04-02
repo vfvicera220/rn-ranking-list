@@ -27,6 +27,7 @@ export type RankingListProps<TItem> = {
   rowHeight?: number;
   duration?: number;
   rowStyle?: StyleProp<ViewStyle>;
+  scrollEventThrottle?: number;
   renderItem?: (params: RankingListRenderParams<TItem>) => React.ReactNode;
 };
 
@@ -46,6 +47,7 @@ export function RankingList<TItem>({
   rowHeight = DEFAULT_ROW_HEIGHT,
   duration = DEFAULT_DURATION,
   rowStyle,
+  scrollEventThrottle = Platform.OS === 'ios' ? 100 : 16,
   renderItem,
 }: RankingListProps<TItem>) {
   const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
@@ -253,7 +255,7 @@ export function RankingList<TItem>({
       style={[styles.scrollView, style]}
       contentContainerStyle={{ height: maxPosition * rowHeight }}
       showsVerticalScrollIndicator={false}
-      scrollEventThrottle={16}
+      scrollEventThrottle={scrollEventThrottle}
       onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
       onScroll={(e) => setScrollOffset(e.nativeEvent.contentOffset.y)}
     >
