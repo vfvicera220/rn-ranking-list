@@ -126,7 +126,7 @@ export function RankingList<TItem>({
   }, [getId, newRanking, oldRanking]);
 
   const visibleItems = useMemo(() => {
-    if (isAnimating || viewportHeight === 0) {
+    if (isAnimating) {
       return rankedItems;
     }
     const firstVisible = Math.max(
