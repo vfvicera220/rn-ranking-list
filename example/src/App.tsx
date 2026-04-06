@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { RankingList } from 'rn-ranking-list';
 
@@ -9,60 +9,14 @@ type Player = {
 };
 
 // ---------------------------------------------------------------------------
-// Large-list helpers
-// ---------------------------------------------------------------------------
-
-function generatePlayers(count: number): Player[] {
-  const NAMES = [
-    'Alex',
-    'Sam',
-    'Jamie',
-    'Taylor',
-    'Morgan',
-    'Jordan',
-    'Casey',
-    'Riley',
-    'Avery',
-    'Quinn',
-    'Logan',
-    'Cameron',
-    'Drew',
-    'Skyler',
-    'Harper',
-    'Parker',
-    'Rowan',
-    'Phoenix',
-    'Sawyer',
-    'Kendall',
-  ];
-  return Array.from({ length: count }, (_, i) => ({
-    id: `p-${i + 1}`,
-    name: `${NAMES[i % NAMES.length]}${Math.floor(i / NAMES.length) || ''}`,
-    score: Math.max(100, 5000 - i * 9),
-  }));
-}
-
-function shuffleArray<T>(arr: T[]): T[] {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
-  }
-  return copy;
-}
-
-const LARGE_LIST_SIZE = 500;
-const basePlayers = generatePlayers(LARGE_LIST_SIZE);
-
-// ---------------------------------------------------------------------------
-// Small-list demo data (original)
+// Demo data
 // ---------------------------------------------------------------------------
 
 const newRankings: Player[] = [
   { id: 'u-1', name: 'Alex', score: 1480 },
   { id: 'u-2', name: 'Sam', score: 1420 },
   { id: 'u-3', name: 'Jamie', score: 1360 },
-  { id: 'u-4', name: 'Taylor', score: 1280 },
+  { id: 'u-4', name: 'You', score: 1280 },
   { id: 'u-5', name: 'Morgan', score: 1220 },
   { id: 'u-6', name: 'Jordan', score: 1180 },
   { id: 'u-7', name: 'Casey', score: 1150 },
@@ -86,6 +40,79 @@ const newRankings: Player[] = [
   { id: 'u-25', name: 'Casey', score: 1150 },
   { id: 'u-26', name: 'Riley', score: 1120 },
   { id: 'u-27', name: 'Avery', score: 1090 },
+  { id: 'u-28', name: 'Blake', score: 745 },
+  { id: 'u-29', name: 'Dakota', score: 730 },
+  { id: 'u-30', name: 'Elliott', score: 715 },
+  { id: 'u-31', name: 'Finley', score: 700 },
+  { id: 'u-32', name: 'Gray', score: 685 },
+  { id: 'u-33', name: 'Haven', score: 670 },
+  { id: 'u-34', name: 'Indigo', score: 655 },
+  { id: 'u-35', name: 'Journey', score: 640 },
+  { id: 'u-36', name: 'Kaden', score: 625 },
+  { id: 'u-37', name: 'Lake', score: 610 },
+  { id: 'u-38', name: 'Morgan', score: 595 },
+  { id: 'u-39', name: 'Nevada', score: 580 },
+  { id: 'u-40', name: 'Ocean', score: 565 },
+  { id: 'u-41', name: 'Paris', score: 550 },
+  { id: 'u-42', name: 'Quinn', score: 535 },
+  { id: 'u-43', name: 'River', score: 520 },
+  { id: 'u-44', name: 'Sky', score: 505 },
+  { id: 'u-45', name: 'Taylor', score: 490 },
+  { id: 'u-46', name: 'Utopia', score: 475 },
+  { id: 'u-47', name: 'Vale', score: 460 },
+  { id: 'u-48', name: 'Waylon', score: 445 },
+  { id: 'u-49', name: 'Xander', score: 430 },
+  { id: 'u-50', name: 'Yara', score: 415 },
+  { id: 'u-51', name: 'Zephyr', score: 400 },
+  { id: 'u-52', name: 'Adrian', score: 385 },
+  { id: 'u-53', name: 'Bailey', score: 370 },
+  { id: 'u-54', name: 'Casey', score: 355 },
+  { id: 'u-55', name: 'Dominic', score: 340 },
+  { id: 'u-56', name: 'Eden', score: 325 },
+  { id: 'u-57', name: 'Flynn', score: 310 },
+  { id: 'u-58', name: 'Gemini', score: 295 },
+  { id: 'u-59', name: 'Holland', score: 280 },
+  { id: 'u-60', name: 'Iris', score: 265 },
+  { id: 'u-61', name: 'Jason', score: 250 },
+  { id: 'u-62', name: 'Kelsey', score: 235 },
+  { id: 'u-63', name: 'London', score: 220 },
+  { id: 'u-64', name: 'Mason', score: 205 },
+  { id: 'u-65', name: 'Noel', score: 190 },
+  { id: 'u-66', name: 'Oakley', score: 175 },
+  { id: 'u-67', name: 'Pierce', score: 160 },
+  { id: 'u-68', name: 'Quinn', score: 145 },
+  { id: 'u-69', name: 'Riley', score: 130 },
+  { id: 'u-70', name: 'Scout', score: 115 },
+  { id: 'u-71', name: 'Tatum', score: 100 },
+  { id: 'u-72', name: 'Unity', score: 85 },
+  { id: 'u-73', name: 'Victor', score: 70 },
+  { id: 'u-74', name: 'Wesley', score: 55 },
+  { id: 'u-75', name: 'Ximena', score: 40 },
+  { id: 'u-76', name: 'Yuki', score: 25 },
+  { id: 'u-77', name: 'Ziggy', score: 10 },
+  { id: 'u-78', name: 'Alder', score: 750 },
+  { id: 'u-79', name: 'Blaise', score: 735 },
+  { id: 'u-80', name: 'Cedar', score: 720 },
+  { id: 'u-81', name: 'Divine', score: 705 },
+  { id: 'u-82', name: 'Elan', score: 690 },
+  { id: 'u-83', name: 'Farren', score: 675 },
+  { id: 'u-84', name: 'Glenn', score: 660 },
+  { id: 'u-85', name: 'Harmony', score: 645 },
+  { id: 'u-86', name: 'Isaiah', score: 630 },
+  { id: 'u-87', name: 'Justice', score: 615 },
+  { id: 'u-88', name: 'Karma', score: 600 },
+  { id: 'u-89', name: 'Lennox', score: 585 },
+  { id: 'u-90', name: 'Marlow', score: 570 },
+  { id: 'u-91', name: 'Novak', score: 555 },
+  { id: 'u-92', name: 'Ozzy', score: 540 },
+  { id: 'u-93', name: 'Piper', score: 525 },
+  { id: 'u-94', name: 'Raven', score: 510 },
+  { id: 'u-95', name: 'Storm', score: 495 },
+  { id: 'u-96', name: 'Trent', score: 480 },
+  { id: 'u-97', name: 'Urban', score: 465 },
+  { id: 'u-98', name: 'Valor', score: 450 },
+  { id: 'u-99', name: 'Winter', score: 435 },
+  { id: 'u-100', name: 'Zane', score: 420 },
 ];
 
 const oldRankings: Player[] = [
@@ -115,7 +142,80 @@ const oldRankings: Player[] = [
   { id: 'u-25', name: 'Casey', score: 1150 },
   { id: 'u-26', name: 'Riley', score: 1120 },
   { id: 'u-27', name: 'Avery', score: 1090 },
-  { id: 'u-4', name: 'Taylor', score: 1280 },
+  { id: 'u-28', name: 'Blake', score: 745 },
+  { id: 'u-29', name: 'Dakota', score: 730 },
+  { id: 'u-30', name: 'Elliott', score: 715 },
+  { id: 'u-31', name: 'Finley', score: 700 },
+  { id: 'u-32', name: 'Gray', score: 685 },
+  { id: 'u-33', name: 'Haven', score: 670 },
+  { id: 'u-34', name: 'Indigo', score: 655 },
+  { id: 'u-35', name: 'Journey', score: 640 },
+  { id: 'u-36', name: 'Kaden', score: 625 },
+  { id: 'u-37', name: 'Lake', score: 610 },
+  { id: 'u-38', name: 'Morgan', score: 595 },
+  { id: 'u-39', name: 'Nevada', score: 580 },
+  { id: 'u-40', name: 'Ocean', score: 565 },
+  { id: 'u-41', name: 'Paris', score: 550 },
+  { id: 'u-42', name: 'Quinn', score: 535 },
+  { id: 'u-43', name: 'River', score: 520 },
+  { id: 'u-44', name: 'Sky', score: 505 },
+  { id: 'u-45', name: 'Taylor', score: 490 },
+  { id: 'u-46', name: 'Utopia', score: 475 },
+  { id: 'u-47', name: 'Vale', score: 460 },
+  { id: 'u-48', name: 'Waylon', score: 445 },
+  { id: 'u-49', name: 'Xander', score: 430 },
+  { id: 'u-50', name: 'Yara', score: 415 },
+  { id: 'u-51', name: 'Zephyr', score: 400 },
+  { id: 'u-52', name: 'Adrian', score: 385 },
+  { id: 'u-53', name: 'Bailey', score: 370 },
+  { id: 'u-54', name: 'Casey', score: 355 },
+  { id: 'u-55', name: 'Dominic', score: 340 },
+  { id: 'u-56', name: 'Eden', score: 325 },
+  { id: 'u-57', name: 'Flynn', score: 310 },
+  { id: 'u-58', name: 'Gemini', score: 295 },
+  { id: 'u-59', name: 'Holland', score: 280 },
+  { id: 'u-60', name: 'Iris', score: 265 },
+  { id: 'u-61', name: 'Jason', score: 250 },
+  { id: 'u-62', name: 'Kelsey', score: 235 },
+  { id: 'u-63', name: 'London', score: 220 },
+  { id: 'u-64', name: 'Mason', score: 205 },
+  { id: 'u-65', name: 'Noel', score: 190 },
+  { id: 'u-66', name: 'Oakley', score: 175 },
+  { id: 'u-67', name: 'Pierce', score: 160 },
+  { id: 'u-68', name: 'Quinn', score: 145 },
+  { id: 'u-69', name: 'Riley', score: 130 },
+  { id: 'u-70', name: 'Scout', score: 115 },
+  { id: 'u-71', name: 'Tatum', score: 100 },
+  { id: 'u-72', name: 'Unity', score: 85 },
+  { id: 'u-73', name: 'Victor', score: 70 },
+  { id: 'u-74', name: 'Wesley', score: 55 },
+  { id: 'u-75', name: 'Ximena', score: 40 },
+  { id: 'u-76', name: 'Yuki', score: 25 },
+  { id: 'u-77', name: 'Ziggy', score: 10 },
+  { id: 'u-78', name: 'Alder', score: 750 },
+  { id: 'u-79', name: 'Blaise', score: 735 },
+  { id: 'u-80', name: 'Cedar', score: 720 },
+  { id: 'u-81', name: 'Divine', score: 705 },
+  { id: 'u-82', name: 'Elan', score: 690 },
+  { id: 'u-83', name: 'Farren', score: 675 },
+  { id: 'u-84', name: 'Glenn', score: 660 },
+  { id: 'u-85', name: 'Harmony', score: 645 },
+  { id: 'u-86', name: 'Isaiah', score: 630 },
+  { id: 'u-87', name: 'Justice', score: 615 },
+  { id: 'u-88', name: 'Karma', score: 600 },
+  { id: 'u-89', name: 'Lennox', score: 585 },
+  { id: 'u-90', name: 'Marlow', score: 570 },
+  { id: 'u-91', name: 'Novak', score: 555 },
+  { id: 'u-92', name: 'Ozzy', score: 540 },
+  { id: 'u-93', name: 'Piper', score: 525 },
+  { id: 'u-94', name: 'Raven', score: 510 },
+  { id: 'u-95', name: 'Storm', score: 495 },
+  { id: 'u-96', name: 'Trent', score: 480 },
+  { id: 'u-97', name: 'Urban', score: 465 },
+  { id: 'u-98', name: 'Valor', score: 450 },
+  { id: 'u-99', name: 'Winter', score: 435 },
+  { id: 'u-100', name: 'Zane', score: 420 },
+  { id: 'u-4', name: 'You', score: 1280 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -156,57 +256,19 @@ function RankRow({
   );
 }
 
+const MemoizedRankRow = memo(RankRow);
+
 // ---------------------------------------------------------------------------
 // Screen types
 // ---------------------------------------------------------------------------
 
-type Screen = 'home' | 'large-list';
-
-// ---------------------------------------------------------------------------
-// Large list screen
-// ---------------------------------------------------------------------------
-
-function LargeListScreen({ onBack }: { onBack: () => void }) {
-  const [rankingA] = useState(() => basePlayers);
-  const [rankingB] = useState(() => shuffleArray(basePlayers));
-  const [isStateB, setIsStateB] = useState(false);
-
-  const oldRanking = isStateB ? rankingA : rankingB;
-  const newRanking = isStateB ? rankingB : rankingA;
-
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Pressable onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </Pressable>
-        <Text style={styles.title}>Large List ({LARGE_LIST_SIZE} items)</Text>
-        <Text style={styles.subtitle}>
-          Virtualization keeps only visible rows mounted at any time.
-        </Text>
-
-        <RankingList
-          oldRanking={oldRanking}
-          newRanking={newRanking}
-          style={styles.list}
-          rowHeight={64}
-          getId={(item) => item.id}
-          renderItem={(params) => <RankRow {...params} />}
-        />
-
-        <Pressable style={styles.button} onPress={() => setIsStateB((v) => !v)}>
-          <Text style={styles.buttonText}>Shuffle Rankings</Text>
-        </Pressable>
-      </View>
-    </SafeAreaView>
-  );
-}
+type Screen = 'home';
 
 // ---------------------------------------------------------------------------
 // Home screen
 // ---------------------------------------------------------------------------
 
-function HomeScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
+function HomeScreen({}: { onNavigate: (screen: Screen) => void }) {
   const [isStateB, setIsStateB] = useState(false);
 
   const oldRanking = isStateB ? oldRankings : newRankings;
@@ -227,18 +289,11 @@ function HomeScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
           style={styles.list}
           rowHeight={68}
           getId={(item) => item.id}
-          renderItem={(params) => <RankRow {...params} />}
+          renderItem={(params) => <MemoizedRankRow {...params} />}
         />
 
         <Pressable style={styles.button} onPress={() => setIsStateB((v) => !v)}>
           <Text style={styles.buttonText}>Simulate Rank Update</Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.button, styles.buttonSecondary]}
-          onPress={() => onNavigate('large-list')}
-        >
-          <Text style={styles.buttonText}>Large List Demo →</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -250,13 +305,7 @@ function HomeScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
 // ---------------------------------------------------------------------------
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('home');
-
-  if (screen === 'large-list') {
-    return <LargeListScreen onBack={() => setScreen('home')} />;
-  }
-
-  return <HomeScreen onNavigate={setScreen} />;
+  return <HomeScreen onNavigate={() => {}} />;
 }
 
 const styles = StyleSheet.create({
