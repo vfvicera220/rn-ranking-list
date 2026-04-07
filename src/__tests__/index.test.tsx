@@ -91,6 +91,7 @@ type RankingListTestProps = {
   scrollToId?: string;
   rowHeight?: number;
   renderItem?: (params: RankingListRenderParams<Player>) => React.ReactNode;
+  skipInitialAnimation?: boolean;
 };
 
 const oldRanking: Player[] = [
