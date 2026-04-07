@@ -24,7 +24,6 @@ export type RankingListProps<TItem> = {
   newRanking: TItem[];
   getId: (item: TItem) => string;
   scrollToId?: string;
-  maxAnimatedRankShift?: number;
   style?: StyleProp<ViewStyle>;
   rowHeight?: number;
   duration?: number;
@@ -36,7 +35,6 @@ export type RankingListProps<TItem> = {
 
 const DEFAULT_ROW_HEIGHT = 64;
 const DEFAULT_DURATION = 450;
-const DEFAULT_MAX_ANIMATED_RANK_SHIFT = 8;
 const OVERSCAN_COUNT = 5;
 const SCROLL_CONTEXT_ROWS = 2;
 
@@ -47,7 +45,6 @@ export function RankingList<TItem>({
   newRanking,
   getId,
   scrollToId,
-  maxAnimatedRankShift = DEFAULT_MAX_ANIMATED_RANK_SHIFT,
   style,
   rowHeight = DEFAULT_ROW_HEIGHT,
   duration = DEFAULT_DURATION,
@@ -224,20 +221,12 @@ export function RankingList<TItem>({
 
   const startAnimation = React.useCallback(() => {
     const animations: Animated.CompositeAnimation[] = [];
-    const maxShiftPx = Math.max(0, maxAnimatedRankShift) * rowHeight;
 
-    rankedItems.forEach(({ id, oldPosition, newPosition }, index) => {
+    rankedItems.forEach(({ id, oldPosition, newPosition }) => {
       const fromY = (oldPosition - 1) * rowHeight;
       const toY = (newPosition - 1) * rowHeight;
       const deltaY = toY - fromY;
       const isFocusedRow = scrollToId === id;
-
-      // For large jumps, non-focused rows only animate a bounded movement to
-      // indicate direction and avoid distracting cross-list travel.
-      const boundedToY =
-        !isFocusedRow && Math.abs(deltaY) > maxShiftPx
-          ? fromY + Math.sign(deltaY) * maxShiftPx
-          : toY;
 
       const existing = yByIdRef.current[id];
       const value = existing ?? new Animated.Value(fromY);
@@ -245,35 +234,26 @@ export function RankingList<TItem>({
       yByIdRef.current[id] = value;
       value.setValue(fromY);
 
-      // Calculate a slight stagger delay based on distance from focused row
-      // to create a more natural cascading effect
-      let delay = 0;
-      if (!isFocusedRow && scrollToId) {
-        const focusedIndex = rankedItems.findIndex(
-          ({ id: rid }) => rid === scrollToId
+      // Only animate the focused row; other rows jump to their final position
+      if (isFocusedRow && scrollToId) {
+        const distanceRows = Math.abs(deltaY) / rowHeight;
+        const focusDuration = Math.min(
+          duration + distanceRows * 20,
+          duration * 3
         );
-        const indexDistance = Math.abs(index - focusedIndex);
-        delay = Math.min(indexDistance * 15, 90); // Up to 90ms stagger
+
+        const easingConfig = {
+          toValue: toY,
+          duration: focusDuration,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+          useNativeDriver: false,
+        };
+
+        animations.push(Animated.timing(value, easingConfig));
+      } else {
+        // Non-focused rows jump directly to their final position
+        value.setValue(toY);
       }
-
-      const distanceRows = Math.abs(deltaY) / rowHeight;
-      const focusDuration = Math.min(
-        duration + distanceRows * 20,
-        duration * 3
-      );
-
-      // Use easing for smoother motion: ease-out gives natural deceleration
-      const easingConfig = {
-        toValue: boundedToY,
-        duration: isFocusedRow ? focusDuration : duration,
-        easing: isFocusedRow
-          ? Easing.bezier(0.25, 0.1, 0.25, 1)
-          : Easing.out(Easing.cubic),
-        delay,
-        useNativeDriver: !isFocusedRow,
-      };
-
-      animations.push(Animated.timing(value, easingConfig));
     });
 
     if (animations.length > 0) {
@@ -287,7 +267,7 @@ export function RankingList<TItem>({
         setIsAnimating(false);
       });
     }
-  }, [duration, maxAnimatedRankShift, rankedItems, rowHeight, scrollToId]);
+  }, [duration, rankedItems, rowHeight, scrollToId]);
 
   useEffect(() => {
     const nextIds = new Set(rankedItems.map(({ id }) => id));
