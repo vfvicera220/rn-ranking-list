@@ -309,8 +309,8 @@ export function RankingList<TItem>({
         } else {
           // Position to animate row out of viewport
           const outOfViewY = isMovingDown
-            ? viewportHeight + rowHeight * 2
-            : -(rowHeight * 2);
+            ? viewportBottom + rowHeight * 2
+            : viewportTop - rowHeight * 2;
 
           animations.push(
             Animated.sequence([
