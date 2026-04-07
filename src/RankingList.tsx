@@ -31,6 +31,7 @@ export type RankingListProps<TItem> = {
   scrollEventThrottle?: number;
   renderItem?: (params: RankingListRenderParams<TItem>) => React.ReactNode;
   onScrollToComplete?: () => void;
+  skipInitialAnimation?: boolean;
 };
 
 const DEFAULT_ROW_HEIGHT = 64;
@@ -52,10 +53,12 @@ export function RankingList<TItem>({
   scrollEventThrottle = Platform.OS === 'ios' ? 100 : 16,
   renderItem,
   onScrollToComplete,
+  skipInitialAnimation = false,
 }: RankingListProps<TItem>) {
   const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const yByIdRef = useRef<Record<string, Animated.Value>>({});
   const scrollOffsetRef = useRef(0);
+  const hasInitialAnimationRunRef = useRef(false);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -201,9 +204,18 @@ export function RankingList<TItem>({
       return null;
     }
 
-    // Keep focus on where the user was before ELO change, then animate.
-    const targetOffset = (targetItem.oldPosition - 1) * rowHeight;
-    const movement = targetItem.oldPosition - targetItem.newPosition;
+    // When skipping initial animation, use new position; otherwise use old position
+    const isFirstAnimation = !hasInitialAnimationRunRef.current;
+    const shouldUseNewPosition = skipInitialAnimation && isFirstAnimation;
+    const positionToUse = shouldUseNewPosition
+      ? targetItem.newPosition
+      : targetItem.oldPosition;
+
+    // Calculate movement and context based on which position we're using
+    const targetOffset = (positionToUse - 1) * rowHeight;
+    const movement = shouldUseNewPosition
+      ? 0 // No movement when we're already at the target position
+      : targetItem.oldPosition - targetItem.newPosition;
 
     // If moving down (negative movement), position at bottom; otherwise at top
     const contextRows =
@@ -217,9 +229,19 @@ export function RankingList<TItem>({
     );
 
     return Math.min(maxScrollOffset, Math.max(0, targetOffset + contextRows));
-  }, [rankedItems, rowHeight, scrollToId, viewportHeight]);
+  }, [
+    rankedItems,
+    rowHeight,
+    scrollToId,
+    viewportHeight,
+    skipInitialAnimation,
+  ]);
 
   const startAnimation = React.useCallback(() => {
+    const isFirstAnimation = !hasInitialAnimationRunRef.current;
+    const shouldSkipFocusAnimation = skipInitialAnimation && isFirstAnimation;
+    hasInitialAnimationRunRef.current = true;
+
     const animations: Animated.CompositeAnimation[] = [];
 
     rankedItems.forEach(({ id, oldPosition, newPosition }) => {
@@ -235,7 +257,7 @@ export function RankingList<TItem>({
       value.setValue(fromY);
 
       // Only animate the focused row; other rows jump to their final position
-      if (isFocusedRow && scrollToId) {
+      if (isFocusedRow && scrollToId && !shouldSkipFocusAnimation) {
         const distanceRows = Math.abs(deltaY) / rowHeight;
         const focusDuration = Math.min(
           duration + distanceRows * 20,
@@ -252,6 +274,7 @@ export function RankingList<TItem>({
         animations.push(Animated.timing(value, easingConfig));
       } else {
         // Non-focused rows jump directly to their final position
+        // Also jump focused row if skipInitialAnimation is true
         value.setValue(toY);
       }
     });
@@ -267,7 +290,7 @@ export function RankingList<TItem>({
         setIsAnimating(false);
       });
     }
-  }, [duration, rankedItems, rowHeight, scrollToId]);
+  }, [duration, rankedItems, rowHeight, scrollToId, skipInitialAnimation]);
 
   useEffect(() => {
     const nextIds = new Set(rankedItems.map(({ id }) => id));

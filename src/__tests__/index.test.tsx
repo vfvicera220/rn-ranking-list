@@ -326,4 +326,118 @@ describe('RankingList', () => {
       animated: false,
     });
   });
+
+  it('skips animation on first load when skipInitialAnimation is true', () => {
+    renderRankingList({
+      oldRanking,
+      newRanking,
+      getId: (item) => item.id,
+      rowHeight: 50,
+      scrollToId: 'u-2',
+      skipInitialAnimation: true,
+    });
+
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(0);
+  });
+
+  it('scrolls to the new position when skipInitialAnimation is true on first load', () => {
+    // u-2 is at index 2 in newRanking (position 3, 1-indexed)
+    // u-2 is at index 1 in oldRanking (position 2, 1-indexed)
+    // targetOffset = (3-1) * 50 = 100
+    // movement = 0 (no movement since skipping animation)
+    // contextRows = -50 * 2 = -100 (moving up)
+    // maxScrollOffset = 3 * 50 - 0 = 150
+    // scrollOffset = min(150, max(0, 100 - 100)) = 0
+    renderRankingList({
+      oldRanking,
+      newRanking,
+      getId: (item) => item.id,
+      rowHeight: 50,
+      scrollToId: 'u-2',
+      skipInitialAnimation: true,
+    });
+
+    expect(mockScrollTo).toHaveBeenCalledWith({
+      y: 0,
+      animated: false,
+    });
+  });
+
+  it('animates on subsequent updates even with skipInitialAnimation', () => {
+    renderRankingList({
+      oldRanking,
+      newRanking,
+      getId: (item) => item.id,
+      rowHeight: 50,
+      scrollToId: 'u-1',
+      skipInitialAnimation: true,
+    });
+
+    mockAnimatedTiming.mockReset();
+
+    // Second render with updated rankings
+    renderRankingList({
+      oldRanking: newRanking,
+      newRanking: updatedRanking,
+      getId: (item) => item.id,
+      rowHeight: 50,
+      scrollToId: 'u-1',
+      skipInitialAnimation: true,
+    });
+
+    // Should animate on subsequent updates
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(1);
+  });
+
+  it('animates normally when skipInitialAnimation is false (default)', () => {
+    renderRankingList({
+      oldRanking,
+      newRanking,
+      getId: (item) => item.id,
+      rowHeight: 50,
+      scrollToId: 'u-2',
+      skipInitialAnimation: false,
+    });
+
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(1);
+  });
+
+  it('positions item at bottom context when moving down with skipInitialAnimation', () => {
+    // Create a scenario where the item moves down significantly
+    const downwardOldRanking: Player[] = [
+      { id: 'u-1', name: 'Alex' },
+      { id: 'u-2', name: 'Sam' },
+      { id: 'u-3', name: 'Jamie' },
+      { id: 'u-4', name: 'Morgan' },
+      { id: 'u-5', name: 'Priya' },
+    ];
+
+    const downwardNewRanking: Player[] = [
+      { id: 'u-1', name: 'Alex' },
+      { id: 'u-3', name: 'Jamie' },
+      { id: 'u-4', name: 'Morgan' },
+      { id: 'u-5', name: 'Priya' },
+      { id: 'u-2', name: 'Sam' },
+    ];
+
+    renderRankingList({
+      oldRanking: downwardOldRanking,
+      newRanking: downwardNewRanking,
+      getId: (item) => item.id,
+      rowHeight: 50,
+      scrollToId: 'u-2',
+      skipInitialAnimation: true,
+    });
+
+    // u-2 is at index 4 in newRanking (position 5, 1-indexed)
+    // targetOffset = (5-1) * 50 = 200
+    // movement = 0 (no movement since skipping animation)
+    // contextRows = -50 * 2 = -100 (no movement means no extra context)
+    // maxScrollOffset = 5 * 50 - 0 = 250
+    // scrollOffset = min(250, max(0, 200 - 100)) = 100
+    expect(mockScrollTo).toHaveBeenCalledWith({
+      y: 100,
+      animated: false,
+    });
+  });
 });

@@ -290,6 +290,7 @@ function HomeScreen({}: { onNavigate: (screen: Screen) => void }) {
           rowHeight={68}
           getId={(item) => item.id}
           renderItem={(params) => <MemoizedRankRow {...params} />}
+          skipInitialAnimation
         />
 
         <Pressable style={styles.button} onPress={() => setIsStateB((v) => !v)}>
