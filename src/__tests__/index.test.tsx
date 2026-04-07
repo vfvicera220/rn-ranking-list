@@ -53,6 +53,7 @@ jest.mock('react-native', () => {
       Value: MockAnimatedValue,
       View: 'Animated.View',
       parallel: jest.fn(() => ({ start: jest.fn() })),
+      sequence: jest.fn(() => ({ start: jest.fn() })),
       timing: jest.fn(() => ({ start: jest.fn() })),
     },
     Easing: mockEasing,
@@ -257,7 +258,8 @@ describe('RankingList', () => {
       scrollToId: 'u-2',
     });
 
-    expect(mockAnimatedTiming).toHaveBeenCalledTimes(1);
+    // Three-phase animation: out of viewport, skip to target, back in
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(3);
   });
 
   it('does not animate when no scrollToId', () => {
@@ -290,7 +292,8 @@ describe('RankingList', () => {
       scrollToId: 'u-1',
     });
 
-    expect(mockAnimatedTiming).toHaveBeenCalledTimes(1);
+    // Three-phase animation: out of viewport, skip to target, back in
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(3);
   });
 
   it('passes the correct index to renderItem', () => {
@@ -386,8 +389,8 @@ describe('RankingList', () => {
       skipInitialAnimation: true,
     });
 
-    // Should animate on subsequent updates
-    expect(mockAnimatedTiming).toHaveBeenCalledTimes(1);
+    // Should animate on subsequent updates (three-phase animation)
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(3);
   });
 
   it('animates normally when skipInitialAnimation is false (default)', () => {
@@ -400,7 +403,8 @@ describe('RankingList', () => {
       skipInitialAnimation: false,
     });
 
-    expect(mockAnimatedTiming).toHaveBeenCalledTimes(1);
+    // Three-phase animation: out of viewport, skip to target, back in
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(3);
   });
 
   it('positions item at bottom context when moving down with skipInitialAnimation', () => {

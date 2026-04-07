@@ -150,13 +150,6 @@ export function RankingList<TItem>({
   }, [rankedItems, rowHeight]);
 
   const visibleItems = useMemo(() => {
-    if (isAnimating) {
-      // During animated transitions, rows can travel across the viewport even
-      // when both endpoints are outside it. Rendering all rows avoids visual
-      // gaps for large list shuffles.
-      return rankedItems;
-    }
-
     const firstVisible = Math.max(
       0,
       Math.floor(scrollOffset / rowHeight) - OVERSCAN_COUNT
@@ -165,32 +158,36 @@ export function RankingList<TItem>({
       rankedItems.length - 1,
       Math.ceil((scrollOffset + viewportHeight) / rowHeight) + OVERSCAN_COUNT
     );
+
+    // Always render only the viewport + overscan
+    // During the two-phase animation (out-of-view skip), the focused row animates off-screen
+    // then is repositioned out-of-view before animating back in, so it won't flicker
     return rankedItems.slice(firstVisible, lastVisible + 1);
-  }, [isAnimating, rankedItems, rowHeight, scrollOffset, viewportHeight]);
+  }, [rankedItems, rowHeight, scrollOffset, viewportHeight]);
 
   const renderItems = useMemo(() => {
-    if (!isAnimating || !scrollToId) {
+    if (!scrollToId) {
       return visibleItems;
     }
 
-    const focusedIndex = rankedItems.findIndex(({ id }) => id === scrollToId);
+    // Always render focused row last so it appears on top of all others
+    const focusedIndex = visibleItems.findIndex(({ id }) => id === scrollToId);
 
     if (focusedIndex < 0) {
-      return visibleItems;
+      const focusedItem = rankedItems.find(({ id }) => id === scrollToId);
+      if (!focusedItem) {
+        return visibleItems;
+      }
+
+      return [...visibleItems, focusedItem];
     }
 
-    const focusedItem = rankedItems[focusedIndex];
-
-    if (!focusedItem) {
-      return visibleItems;
-    }
-
-    return [
-      ...rankedItems.slice(0, focusedIndex),
-      ...rankedItems.slice(focusedIndex + 1),
-      focusedItem,
+    const withoutFocused = [
+      ...visibleItems.slice(0, focusedIndex),
+      ...visibleItems.slice(focusedIndex + 1),
     ];
-  }, [isAnimating, rankedItems, scrollToId, visibleItems]);
+    return [...withoutFocused, visibleItems[focusedIndex]];
+  }, [rankedItems, scrollToId, visibleItems]);
 
   const maxPosition = rankedItems.length;
   const scrollTargetOffset = useMemo(() => {
@@ -211,13 +208,26 @@ export function RankingList<TItem>({
       ? targetItem.newPosition
       : targetItem.oldPosition;
 
-    // Calculate movement and context based on which position we're using
-    const targetOffset = (positionToUse - 1) * rowHeight;
+    // Calculate position in scroll coordinates
+    const rowScrollY = (positionToUse - 1) * rowHeight;
+
+    // If viewport is large enough, center the focused row; otherwise use context-based positioning
+    if (viewportHeight > rowHeight * 3) {
+      // Center the focused row on screen
+      const fixedViewportY = (viewportHeight - rowHeight) / 2;
+      const targetOffset = rowScrollY - fixedViewportY;
+      const maxScrollOffset = Math.max(
+        0,
+        rankedItems.length * rowHeight - viewportHeight
+      );
+      return Math.max(0, Math.min(maxScrollOffset, targetOffset));
+    }
+
+    // Fallback: use context-based positioning for small viewports
     const movement = shouldUseNewPosition
-      ? 0 // No movement when we're already at the target position
+      ? 0
       : targetItem.oldPosition - targetItem.newPosition;
 
-    // If moving down (negative movement), position at bottom; otherwise at top
     const contextRows =
       movement < 0
         ? rowHeight * SCROLL_CONTEXT_ROWS + rowHeight - viewportHeight
@@ -228,7 +238,7 @@ export function RankingList<TItem>({
       rankedItems.length * rowHeight - viewportHeight
     );
 
-    return Math.min(maxScrollOffset, Math.max(0, targetOffset + contextRows));
+    return Math.min(maxScrollOffset, Math.max(0, rowScrollY + contextRows));
   }, [
     rankedItems,
     rowHeight,
@@ -241,6 +251,12 @@ export function RankingList<TItem>({
     const isFirstAnimation = !hasInitialAnimationRunRef.current;
     const shouldSkipFocusAnimation = skipInitialAnimation && isFirstAnimation;
     hasInitialAnimationRunRef.current = true;
+
+    const focusedItem = scrollToId
+      ? rankedItems.find(({ id }) => id === scrollToId)
+      : undefined;
+    const shouldAnimateAllRows =
+      !!scrollToId && !focusedItem && !shouldSkipFocusAnimation;
 
     const animations: Animated.CompositeAnimation[] = [];
 
@@ -257,21 +273,77 @@ export function RankingList<TItem>({
       value.setValue(fromY);
 
       // Only animate the focused row; other rows jump to their final position
-      if (isFocusedRow && scrollToId && !shouldSkipFocusAnimation) {
+      if (isFocusedRow && focusedItem && !shouldSkipFocusAnimation) {
         const distanceRows = Math.abs(deltaY) / rowHeight;
-        const focusDuration = Math.min(
+        const movement = oldPosition - newPosition;
+        const isMovingDown = movement < 0;
+        const viewportTop = scrollOffsetRef.current;
+        const viewportBottom = viewportTop + viewportHeight;
+        const fromInViewport =
+          fromY + rowHeight > viewportTop && fromY < viewportBottom;
+        const toInViewport =
+          toY + rowHeight > viewportTop && toY < viewportBottom;
+
+        // Two-phase animation: out of viewport, then skip to target
+        // Phase 1 duration is slightly shorter, Phase 3 matches it
+        const totalDuration = Math.min(
           duration + distanceRows * 20,
           duration * 3
         );
+        const phaseDuration = totalDuration * 0.45;
 
-        const easingConfig = {
-          toValue: toY,
-          duration: focusDuration,
-          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-          useNativeDriver: false,
-        };
+        if (fromInViewport && toInViewport) {
+          animations.push(
+            Animated.timing(value, {
+              toValue: toY,
+              duration: totalDuration,
+              easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+              useNativeDriver: false,
+            })
+          );
+        } else {
+          // Position to animate row out of viewport
+          const outOfViewY = isMovingDown
+            ? viewportHeight + rowHeight * 2
+            : -(rowHeight * 2);
 
-        animations.push(Animated.timing(value, easingConfig));
+          animations.push(
+            Animated.sequence([
+              // Phase 1: Animate row out of current viewport
+              Animated.timing(value, {
+                toValue: outOfViewY,
+                duration: phaseDuration,
+                easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+                useNativeDriver: false,
+              }),
+              // Phase 2: Instantly reposition to off-screen at new location
+              // (0-duration jump to the opposite side of the new position)
+              Animated.timing(value, {
+                toValue: isMovingDown
+                  ? toY - (viewportHeight + rowHeight * 2)
+                  : toY + (viewportHeight + rowHeight * 2),
+                duration: 0,
+                useNativeDriver: false,
+              }),
+              // Phase 3: Animate back into viewport at new position
+              Animated.timing(value, {
+                toValue: toY,
+                duration: phaseDuration,
+                easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+                useNativeDriver: false,
+              }),
+            ])
+          );
+        }
+      } else if (shouldAnimateAllRows && oldPosition !== newPosition) {
+        animations.push(
+          Animated.timing(value, {
+            toValue: toY,
+            duration,
+            easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+            useNativeDriver: false,
+          })
+        );
       } else {
         // Non-focused rows jump directly to their final position
         // Also jump focused row if skipInitialAnimation is true
@@ -290,25 +362,42 @@ export function RankingList<TItem>({
         setIsAnimating(false);
       });
     }
-  }, [duration, rankedItems, rowHeight, scrollToId, skipInitialAnimation]);
+  }, [
+    duration,
+    rankedItems,
+    rowHeight,
+    scrollToId,
+    skipInitialAnimation,
+    viewportHeight,
+  ]);
 
-  useEffect(() => {
+  // Initialize animated values when rankedItems changes or is first created
+  useMemo(() => {
     const nextIds = new Set(rankedItems.map(({ id }) => id));
 
+    // Clean up animated values for items that no longer exist
     Object.keys(yByIdRef.current).forEach((id) => {
       if (!nextIds.has(id)) {
         delete yByIdRef.current[id];
       }
     });
 
+    // Initialize animated values for each item in rankedItems
     rankedItems.forEach(({ id, newPosition }) => {
-      const toY = (newPosition - 1) * rowHeight;
+      if (!yByIdRef.current[id]) {
+        yByIdRef.current[id] = new Animated.Value(
+          (newPosition - 1) * rowHeight
+        );
+      }
+    });
+  }, [rankedItems, rowHeight]);
 
-      const existing = yByIdRef.current[id];
-      const value = existing ?? new Animated.Value(toY);
-      yByIdRef.current[id] = value;
-
-      value.setValue(toY);
+  // When rankedItems changes, immediately reset animated values to old positions
+  // This prevents flicker by ensuring items are positioned correctly before animation starts
+  useEffect(() => {
+    rankedItems.forEach(({ id, oldPosition }) => {
+      const fromY = (oldPosition - 1) * rowHeight;
+      yByIdRef.current[id]?.setValue(fromY);
     });
   }, [rankedItems, rowHeight]);
 
@@ -355,50 +444,29 @@ export function RankingList<TItem>({
       0,
       maxPosition * rowHeight - viewportHeight
     );
-    const topContext = rowHeight * SCROLL_CONTEXT_ROWS;
-    const bottomContext = rowHeight * SCROLL_CONTEXT_ROWS;
-    let frameId = 0;
 
-    const followRow = (rowTop: number) => {
-      const rowBottom = rowTop + rowHeight;
-      const currentOffset = scrollOffsetRef.current;
-      const viewportTop = currentOffset;
-      const viewportBottom = currentOffset + viewportHeight;
+    // Position focused row at center of viewport (fixed screen position)
+    const fixedViewportY = (viewportHeight - rowHeight) / 2;
 
-      let nextOffset = currentOffset;
+    const lockRow = (rowTop: number) => {
+      // Calculate scroll offset to keep focused row at fixed viewport position
+      const nextOffset = Math.max(
+        0,
+        Math.min(maxScrollOffset, rowTop - fixedViewportY)
+      );
 
-      if (rowTop < viewportTop + topContext) {
-        nextOffset = Math.max(0, rowTop - topContext);
-      } else if (rowBottom > viewportBottom - bottomContext) {
-        nextOffset = Math.min(
-          maxScrollOffset,
-          rowBottom - viewportHeight + bottomContext
-        );
-      }
-
-      if (Math.abs(nextOffset - currentOffset) > 0.5) {
+      if (Math.abs(nextOffset - scrollOffsetRef.current) > 0.5) {
         scrollViewRef.current?.scrollTo({ y: nextOffset, animated: false });
         scrollOffsetRef.current = nextOffset;
       }
     };
 
     const listenerId = focusedY.addListener(({ value }) => {
-      if (frameId) {
-        return;
-      }
-
-      frameId = requestAnimationFrame(() => {
-        frameId = 0;
-        followRow(value);
-      });
+      lockRow(value);
     });
 
     return () => {
       focusedY.removeListener(listenerId);
-
-      if (frameId) {
-        cancelAnimationFrame(frameId);
-      }
     };
   }, [isAnimating, maxPosition, rowHeight, scrollToId, viewportHeight]);
 
@@ -414,29 +482,35 @@ export function RankingList<TItem>({
     }
 
     const targetY = (focusedItem.newPosition - 1) * rowHeight;
-    const movement = focusedItem.oldPosition - focusedItem.newPosition;
     const maxScrollOffset = Math.max(
       0,
       maxPosition * rowHeight - viewportHeight
     );
 
-    // If moving down (negative movement), position at bottom; otherwise at top
+    // If viewport is large enough, center the focused row; otherwise use context-based positioning
     let nextOffset;
-    if (movement < 0) {
-      // Moving down: position at bottom with context rows below
-      nextOffset = Math.min(
-        maxScrollOffset,
-        Math.max(
-          0,
-          targetY + rowHeight - viewportHeight + rowHeight * SCROLL_CONTEXT_ROWS
-        )
+    if (viewportHeight > rowHeight * 3) {
+      // Center the focused row on screen
+      const fixedViewportY = (viewportHeight - rowHeight) / 2;
+      nextOffset = Math.max(
+        0,
+        Math.min(maxScrollOffset, targetY - fixedViewportY)
       );
     } else {
-      // Moving up or static: position at top with context rows above
-      nextOffset = Math.min(
-        maxScrollOffset,
-        Math.max(0, targetY - rowHeight * SCROLL_CONTEXT_ROWS)
-      );
+      // Fallback: use context-based positioning for small viewports
+      const movement = focusedItem.oldPosition - focusedItem.newPosition;
+      let baseOffset;
+      if (movement < 0) {
+        // Moving down: position at bottom with context rows below
+        baseOffset = Math.max(
+          0,
+          targetY + rowHeight - viewportHeight + rowHeight * SCROLL_CONTEXT_ROWS
+        );
+      } else {
+        // Moving up or static: position at top with context rows above
+        baseOffset = Math.max(0, targetY - rowHeight * SCROLL_CONTEXT_ROWS);
+      }
+      nextOffset = Math.min(maxScrollOffset, baseOffset);
     }
 
     scrollViewRef.current?.scrollTo({ y: nextOffset, animated: false });
@@ -468,7 +542,7 @@ export function RankingList<TItem>({
         {renderItems.map(
           ({ id, item, oldPosition, newPosition, movement, index }) => {
             const y = yByIdRef.current[id]!;
-            const isFocusedRow = scrollToId === id && isAnimating;
+            const isFocusedRow = scrollToId === id;
 
             return (
               <Animated.View
@@ -480,8 +554,8 @@ export function RankingList<TItem>({
                   {
                     height: rowHeight,
                     transform: [{ translateY: y }],
-                    zIndex: isFocusedRow ? 1 : 0,
-                    elevation: isFocusedRow ? 1 : 0,
+                    zIndex: isFocusedRow ? 1000 : 0,
+                    elevation: isFocusedRow ? 1000 : 0,
                   },
                 ]}
               >
