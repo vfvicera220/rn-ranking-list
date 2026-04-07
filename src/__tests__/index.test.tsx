@@ -26,6 +26,28 @@ jest.mock('react-native', () => {
     }
   }
 
+  // Easing mock functions
+  const mockEasing = {
+    linear: () => (t: number) => t,
+    ease: () => (t: number) => t,
+    quad: () => (t: number) => t * t,
+    cubic: () => (t: number) => t * t * t,
+    poly: (n: number) => (t: number) => Math.pow(t, n),
+    sin: () => (t: number) => 1 - Math.cos((t * Math.PI) / 2),
+    circle: () => (t: number) => 1 - Math.sqrt(1 - t * t),
+    exp: () => (t: number) => Math.pow(2, 10 * (t - 1)),
+    elastic: () => (t: number) => t,
+    back: () => (t: number) => t,
+    bounce: () => (t: number) => t,
+    bezier:
+      (_x1: number, _y1: number, _x2: number, _y2: number) => (t: number) =>
+        t,
+    in: (easing: (t: number) => number) => easing,
+    out: (easing: (t: number) => number) => (t: number) => 1 - easing(1 - t),
+    inOut: (easing: (t: number) => number) => (t: number) =>
+      t < 0.5 ? easing(t * 2) / 2 : 1 - easing((1 - t) * 2) / 2,
+  };
+
   return {
     Animated: {
       Value: MockAnimatedValue,
@@ -33,6 +55,7 @@ jest.mock('react-native', () => {
       parallel: jest.fn(() => ({ start: jest.fn() })),
       timing: jest.fn(() => ({ start: jest.fn() })),
     },
+    Easing: mockEasing,
     Platform: { OS: 'android' },
     ScrollView: 'ScrollView',
     StyleSheet: {
@@ -199,8 +222,15 @@ describe('RankingList', () => {
       scrollToId: 'u-2',
     });
 
+    // u-2 is at index 1 in oldRanking (position 2, 1-indexed)
+    // targetOffset = (2-1) * 50 = 50
+    // movement = 2 - 3 = -1 (moving down)
+    // With contextRows for downward movement and viewportHeight=0:
+    // contextRows = 50 * 2 + 50 - 0 = 150
+    // maxScrollOffset = 3 * 50 - 0 = 150
+    // scrollOffset = min(150, max(0, 50 + 150)) = 150
     expect(mockScrollTo).toHaveBeenCalledWith({
-      y: 0,
+      y: 150,
       animated: false,
     });
   });
