@@ -247,7 +247,19 @@ describe('RankingList', () => {
     expect(mockScrollTo).not.toHaveBeenCalled();
   });
 
-  it('animates when rankings change', () => {
+  it('animates when rankings change with scrollToId', () => {
+    renderRankingList({
+      oldRanking,
+      newRanking,
+      getId: (item) => item.id,
+      rowHeight: 50,
+      scrollToId: 'u-2',
+    });
+
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not animate when no scrollToId', () => {
     renderRankingList({
       oldRanking,
       newRanking,
@@ -255,18 +267,16 @@ describe('RankingList', () => {
       rowHeight: 50,
     });
 
-    expect(mockAnimatedTiming).toHaveBeenCalledTimes(3);
-    expect(
-      mockAnimatedTiming.mock.calls.map(([, config]) => config.toValue)
-    ).toEqual([0, 50, 100]);
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(0);
   });
 
-  it('animates when rankings update', () => {
+  it('animates when rankings update with scrollToId', () => {
     renderRankingList({
       oldRanking,
       newRanking,
       getId: (item) => item.id,
       rowHeight: 50,
+      scrollToId: 'u-1',
     });
 
     mockAnimatedTiming.mockReset();
@@ -276,12 +286,10 @@ describe('RankingList', () => {
       newRanking: updatedRanking,
       getId: (item) => item.id,
       rowHeight: 50,
+      scrollToId: 'u-1',
     });
 
-    expect(mockAnimatedTiming).toHaveBeenCalledTimes(3);
-    expect(
-      mockAnimatedTiming.mock.calls.map(([, config]) => config.toValue)
-    ).toEqual([0, 50, 100]);
+    expect(mockAnimatedTiming).toHaveBeenCalledTimes(1);
   });
 
   it('passes the correct index to renderItem', () => {
