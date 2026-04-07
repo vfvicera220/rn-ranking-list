@@ -1024,9 +1024,13 @@ const extendRankings = (base: Player[]): Player[] => {
     return base;
   }
 
+  if (base.length === 0) {
+    return base;
+  }
+
   const extra: Player[] = [];
   while (base.length + extra.length < targetCount) {
-    const source = base[extra.length % base.length];
+    const source = base[extra.length % base.length]!;
     const idNumber = base.length + extra.length + 1;
     extra.push({
       id: `u-${idNumber}`,

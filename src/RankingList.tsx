@@ -182,11 +182,16 @@ export function RankingList<TItem>({
       return [...visibleItems, focusedItem];
     }
 
+    const focusedItem = visibleItems[focusedIndex];
+    if (!focusedItem) {
+      return visibleItems;
+    }
+
     const withoutFocused = [
       ...visibleItems.slice(0, focusedIndex),
       ...visibleItems.slice(focusedIndex + 1),
     ];
-    return [...withoutFocused, visibleItems[focusedIndex]];
+    return [...withoutFocused, focusedItem];
   }, [rankedItems, scrollToId, visibleItems]);
 
   const maxPosition = rankedItems.length;
